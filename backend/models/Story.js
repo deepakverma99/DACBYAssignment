@@ -18,6 +18,12 @@ const storySchema = new mongoose.Schema({
   postedAt: {
     type: String,
   },
+  imageUrl: {
+    type: String,
+  },
+  content: {
+    type: String,
+  },
   scrapedAt: {
     type: Date,
     default: Date.now,
