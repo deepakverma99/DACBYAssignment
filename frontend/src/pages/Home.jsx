@@ -107,9 +107,9 @@ const Home = () => {
         <p className="text-muted text-sm mt-1">Latest from Hacker News, sorted by points</p>
       </header>
 
-      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
+      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-2 py-4">
         {/* Left Pane: Stories List */}
-        <div className="lg:col-span-5 h-full overflow-y-auto pr-2 hide-scrollbar flex flex-col gap-4">
+        <div className="lg:col-span-5 h-full overflow-y-auto pr-2 hide-scrollbar flex flex-col gap-3">
           {stories.map((story) => (
             <StoryCard
               key={story._id}
