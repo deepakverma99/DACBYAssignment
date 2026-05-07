@@ -30,7 +30,7 @@ const StoryCard = ({ story, isBookmarked = false, onBookmarkToggle, isSelected =
 
   return (
     <article
-      className={`flex items-center justify-between gap-4 p-5 border rounded-xl transition-all duration-250 cursor-pointer h-[136px] ${
+      className={`flex items-center justify-between gap-4 p-5 border rounded-xl transition-all duration-250 cursor-pointer min-h-[136px] h-auto ${
         isSelected
           ? 'bg-surface-hover border-primary shadow-[0_8px_24px_rgba(255,102,0,0.08)]'
           : 'bg-surface border-border hover:bg-surface-hover hover:border-primary/50'

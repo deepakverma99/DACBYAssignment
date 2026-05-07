@@ -4,14 +4,14 @@ import { ROUTES } from '../constants/routes';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-
+//loader component for protected routes
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="spinner" />
       </div>
     );
-  }
+  } 
 
   if (!user) {
     return <Navigate to={ROUTES.LOGIN} replace />;
