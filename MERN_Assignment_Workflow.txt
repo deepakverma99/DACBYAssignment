@@ -1,0 +1,383 @@
+
+MERN Stack Assignment
+Full-Stack Developer Role — Execution Workflow Document
+Time Limit
+48 Hours
+Stack
+MongoDB, Express, React, Node.js
+Deliverables
+GitHub Repo + Loom Video
+
+Overview
+This document outlines a structured, step-by-step execution plan to complete the MERN full-stack assignment within 48 hours. The plan is divided into 5 phases, each with clear tasks, sub-steps, and time estimates. Follow the phases in order for the smoothest path to a complete, well-structured submission.
+
+Key evaluation criteria
+	•	Code quality & clean folder structure (routes/, models/, controllers/, middleware/)
+	•	API design — all endpoints must work correctly with proper status codes
+	•	Frontend usability — clean UI, auth flow, bookmark toggle
+	•	Authentication & state management via React Context API
+	•	Multiple meaningful Git commits (single-commit repos are auto-rejected)
+	•	Loom video: 5–10 minutes explaining your approach and decisions
+
+Phase 1
+Project Setup & Folder Structure
+
+Estimated time: 2 hours  |  Day 1, Hours 0–2
+Start here before writing any feature code. A clean repo and proper structure from the beginning prevents refactoring later and signals professionalism to reviewers.
+
+1.1
+Create GitHub Repository
+	•	Create a new public GitHub repo with a meaningful name (e.g., hn-mern-app)
+	•	Clone it locally and make your FIRST commit with just the folder structure
+	•	This first commit establishes your commit history — critical for evaluation
+1.2
+Set up backend folder structure
+	•	backend/ — root for the Node/Express server
+	•	backend/routes/ — all Express route files
+	•	backend/models/ — Mongoose models (User, Story)
+	•	backend/controllers/ — business logic functions
+	•	backend/middleware/ — auth middleware (JWT verification)
+	•	backend/config/ — database connection file
+	•	backend/scraper/ — HackerNews scraper module
+1.3
+Set up frontend folder structure
+	•	Bootstrap with Vite (recommended) or Create React App: npm create vite@latest frontend
+	•	frontend/src/context/ — AuthContext.jsx
+	•	frontend/src/pages/ — Login.jsx, Register.jsx, Home.jsx, Bookmarks.jsx
+	•	frontend/src/components/ — StoryCard.jsx, Navbar.jsx, ProtectedRoute.jsx
+	•	frontend/src/api/ — axios.js (base API config with interceptors)
+1.4
+Configure environment & dependencies
+	•	Backend: npm install express mongoose jsonwebtoken bcryptjs dotenv axios cheerio cors
+	•	Frontend: npm install axios react-router-dom
+	•	Create backend/.env with: MONGO_URI, JWT_SECRET, PORT
+	•	Create .env.example with placeholder values (commit this, NOT .env)
+	•	Add .env to .gitignore immediately — never commit secrets
+
+Commit checkpoint
+	•	Commit: 'chore: initialize project structure and dependencies'
+	•	Push to GitHub before moving to Phase 2
+
+Phase 2
+Backend — Node.js + Express
+
+Estimated time: 6 hours  |  Day 1, Hours 2–8
+Build the backend in this order: database connection → models → auth → story routes → middleware. Getting auth working first means you can test protected endpoints as you build them.
+
+2.1  Database Connection
+DB
+Connect to MongoDB Atlas
+	•	Create a free MongoDB Atlas cluster at mongodb.com/atlas
+	•	Whitelist your IP (or 0.0.0.0/0 for development)
+	•	Copy the connection string into MONGO_URI in your .env file
+	•	Write backend/config/db.js using mongoose.connect() with async/await error handling
+	•	Call connectDB() at the top of server.js before starting the Express app
+
+2.2  Mongoose Models
+M1
+User model — backend/models/User.js
+	•	Fields: name (String, required), email (String, required, unique), password (String, required)
+	•	bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Story' }]
+	•	createdAt: { type: Date, default: Date.now }
+M2
+Story model — backend/models/Story.js
+	•	Fields: title (String, required), url (String), points (Number, default: 0)
+	•	author (String), postedAt (String), scrapedAt (Date, default: Date.now)
+	•	Add a unique index on url to prevent duplicate stories from re-scraping
+
+2.3  Authentication Routes & Middleware
+A1
+POST /api/auth/register
+	•	Validate that email is not already in use — return 400 if duplicate
+	•	Hash password with bcryptjs: bcrypt.hash(password, 10)
+	•	Save new User document to MongoDB
+	•	Return a signed JWT: jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' })
+A2
+POST /api/auth/login
+	•	Find user by email — return 400 'Invalid credentials' if not found (don't reveal which field failed)
+	•	Compare password with bcrypt.compare(password, user.password)
+	•	Return JWT token and user object (omit password field from response)
+A3
+Auth middleware — backend/middleware/auth.js
+	•	Extract token from Authorization header: req.headers.authorization?.split(' ')[1]
+	•	Verify with jwt.verify(token, JWT_SECRET) — catch errors and return 401
+	•	Attach decoded user id to req.user — pass to next()
+	•	Apply this middleware to all protected routes (POST /bookmark)
+
+2.4  Story Routes
+
+All story API endpoints:
+
+Method
+Endpoint
+Description
+GET
+/api/stories
+All stories sorted by points desc (supports ?page=1&limit=10)
+GET
+/api/stories/:id
+Single story by MongoDB ObjectId
+POST
+/api/stories/:id/bookmark
+Toggle bookmark — auth required
+POST
+/api/scrape
+Manually trigger the HackerNews scraper
+
+S1
+GET /api/stories — getStories controller
+	•	const { page = 1, limit = 10 } = req.query — parse pagination params
+	•	Story.find().sort({ points: -1 }).skip((page-1)*limit).limit(Number(limit))
+	•	Return { stories, totalCount, page, totalPages } for bonus pagination support
+S2
+GET /api/stories/:id — getStory controller
+	•	Story.findById(req.params.id) — handle invalid ObjectId with try/catch
+	•	Return 404 with a clear message if story not found
+S3
+POST /api/stories/:id/bookmark — toggleBookmark controller
+	•	Protect with auth middleware
+	•	Find user by req.user.id
+	•	Check if story ID already in user.bookmarks array
+	•	If present: remove with $pull. If absent: add with $push — return updated bookmarks array
+	•	Return { bookmarked: true/false, bookmarks: [...] }
+
+Commit checkpoint
+	•	Commit: 'feat: add User and Story models'
+	•	Commit: 'feat: implement JWT auth — register and login endpoints'
+	•	Commit: 'feat: add story routes — list, single, and bookmark toggle'
+
+Phase 3
+Web Scraper — Hacker News
+
+Estimated time: 3 hours  |  Day 1, Hours 8–11
+Use axios + cheerio — no need for Puppeteer since Hacker News renders static HTML. The scraper must run automatically when the server starts AND be manually triggerable via the POST /api/scrape endpoint.
+
+3.1
+Install and set up scraper dependencies
+	•	axios is already installed — add cheerio: npm install cheerio
+	•	Create backend/scraper/hnScraper.js as the main scraper module
+3.2
+Write the scraper function
+	•	Fetch https://news.ycombinator.com using axios.get()
+	•	Load HTML into cheerio: const $ = cheerio.load(response.data)
+	•	Select story rows with .athing — iterate over the first 10
+	•	Extract title: .titleline > a — get text and href
+	•	Find the corresponding .subtext row (next sibling) for points, author, postedAt
+	•	Points: .score element text (parse integer, default 0 if missing)
+	•	Author: .hnuser element text
+	•	Posted time: .age element's title attribute or text content
+3.3
+Save to MongoDB with upsert
+	•	For each story: Story.findOneAndUpdate({ url: story.url }, story, { upsert: true, new: true })
+	•	Upsert prevents duplicate entries when the scraper runs multiple times
+	•	Return the count of upserted/updated stories for the API response
+3.4
+Wire scraper to server start and POST endpoint
+	•	In server.js, after connectDB(): call scrapeHackerNews() wrapped in a try/catch
+	•	In routes/scrapeRoutes.js: POST /api/scrape calls the same scraper and returns { success, count }
+	•	Log scraping results to console with timestamps for easy debugging
+
+Commit checkpoint
+	•	Commit: 'feat: add HackerNews scraper with auto-run on server start'
+	•	Commit: 'feat: expose POST /api/scrape for manual trigger'
+
+Phase 4
+Frontend — React
+
+Estimated time: 8 hours  |  Day 2, Hours 0–8
+Build in this exact order: API config → AuthContext → Login/Register → Stories list → Bookmark toggle → Protected route → Bookmarks page. Each layer depends on the one before it.
+
+4.1  Axios Base Configuration
+4.1
+frontend/src/api/axios.js — centralized API client
+	•	Create axios instance with baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000'
+	•	Add a request interceptor that reads the JWT from localStorage and attaches Authorization: Bearer <token> header
+	•	All components import from this file — never hardcode the API URL anywhere else
+
+4.2  Auth Context
+4.2
+frontend/src/context/AuthContext.jsx
+	•	Create AuthContext with createContext() and export useAuth() custom hook
+	•	State: user (object), token (string), loading (boolean)
+	•	login(email, password): POST /api/auth/login → store token in localStorage → set user/token state
+	•	register(name, email, password): POST /api/auth/register → same as login flow
+	•	logout(): clear localStorage → reset state to null
+	•	On mount: check localStorage for existing token → validate or clear it
+	•	Wrap entire app in <AuthProvider> in main.jsx
+
+4.3  Auth Pages
+L1
+Register page — /register
+	•	Form: name, email, password inputs with controlled state
+	•	On submit: call register() from useAuth() — redirect to / on success
+	•	Show error messages below the form on failure
+	•	Link to /login for existing users
+L2
+Login page — /login
+	•	Form: email, password inputs
+	•	On submit: call login() from useAuth() — redirect to / on success
+	•	Show error message on failed login
+	•	Link to /register for new users
+
+4.4  Stories List & Story Card
+4.4
+Home page — / (stories list)
+	•	On mount: GET /api/stories — store in local state
+	•	Map over stories → render <StoryCard> component for each
+	•	StoryCard displays: title (linked to URL), points, author, postedAt
+	•	Bookmark button: heart/star icon — filled if bookmarked, outline if not
+	•	On bookmark click: POST /api/stories/:id/bookmark — update local state immediately (optimistic UI)
+	•	If not logged in: bookmark click redirects to /login
+	•	Bonus: add page number state + Prev/Next buttons for pagination
+
+4.5  Protected Route & Bookmarks Page
+PR
+ProtectedRoute.jsx — HOC wrapper
+	•	Use useAuth() to check if user is authenticated
+	•	If not: return <Navigate to='/login' replace /> — do not render children
+	•	If yes: return children (render the protected page normally)
+BM
+Bookmarks page — /bookmarks (protected)
+	•	Wrap in <ProtectedRoute> in the router config
+	•	Fetch GET /api/stories — filter only stories that user has bookmarked
+	•	Or maintain bookmark state in AuthContext and filter client-side
+	•	Empty state: show friendly message 'No bookmarks yet' with link to browse stories
+
+4.6  Routing & Navbar
+4.6
+App router setup in App.jsx
+	•	Use react-router-dom v6 with <BrowserRouter>, <Routes>, <Route>
+	•	Routes: / (Home), /login, /register, /bookmarks (protected)
+	•	Navbar: show logo/title, Stories link, Bookmarks link (if logged in), Login/Logout button
+	•	Logout button calls logout() from useAuth() and redirects to /login
+
+Commit checkpoint
+	•	Commit: 'feat: add AuthContext with login, register, logout'
+	•	Commit: 'feat: add Login and Register pages with form validation'
+	•	Commit: 'feat: add stories list with StoryCard component'
+	•	Commit: 'feat: implement bookmark toggle with optimistic UI'
+	•	Commit: 'feat: add protected Bookmarks page and ProtectedRoute HOC'
+
+Phase 5
+Polish, README & Submission
+
+Estimated time: 4 hours  |  Day 2, Hours 8–12
+The final phase covers documentation, optional deployment, and recording the Loom walkthrough. A well-written README and a clear video are as important as the code itself.
+
+5.1  Code Review Checklist
+
+Before writing the README, do a full pass through the codebase:
+
+	•	No hardcoded values — all secrets/URLs in .env or environment variables
+	•	No unused imports, dead code, or commented-out blocks
+	•	All API errors handled with appropriate status codes (400, 401, 404, 500)
+	•	Folder structure matches: routes/, models/, controllers/, middleware/
+	•	CORS configured on backend for frontend URL
+	•	JWT is not stored anywhere except localStorage (no hardcoded tokens)
+	•	Scraper runs on server start and POST /api/scrape both work
+	•	Multiple meaningful Git commits exist with clear messages
+
+5.2  Write README.md
+5.2
+README.md must include all of the following
+	•	Project title and short description (1–2 sentences)
+	•	Tech stack listed: MongoDB, Express, React, Node.js, Cheerio, JWT
+	•	Prerequisites: Node.js v18+, npm, MongoDB Atlas account
+	•	Setup instructions: git clone → npm install (backend) → npm install (frontend)
+	•	Environment variables table: variable name, description, example value for each
+	•	How to run locally: start backend (npm run dev), start frontend (npm run dev)
+	•	API endpoints table: method, route, auth required, description
+	•	Live URL if deployed (bonus)
+	•	Loom video link
+
+5.3  Deployment (Bonus)
+BE
+Backend — deploy to Render or Railway
+	•	Push code to GitHub (already done)
+	•	Create a new Web Service on Render — connect your GitHub repo
+	•	Set root directory to backend/, build command: npm install, start command: node server.js
+	•	Add environment variables: MONGO_URI, JWT_SECRET, PORT in the Render dashboard
+	•	Note the deployed URL (e.g. https://your-app.onrender.com)
+FE
+Frontend — deploy to Vercel
+	•	Connect frontend/ folder to Vercel via GitHub
+	•	Set environment variable VITE_API_URL to your Render backend URL
+	•	Vercel auto-deploys on every push to main branch
+	•	Test the live URL end-to-end before submitting
+
+5.4  Loom Video Walkthrough (5–10 minutes)
+5.4
+What to cover in your Loom recording
+	•	Start with a 30-second overview of what you built and the tech stack
+	•	Walk through the folder structure — explain why controllers are separate from routes
+	•	Show the scraper: explain why you chose axios + cheerio over Puppeteer
+	•	Demo the auth flow: register → login → JWT stored in localStorage
+	•	Demo bookmark toggle: click to add, click to remove — show it persists via backend
+	•	Show the protected /bookmarks page — demonstrate redirect when logged out
+	•	If deployed: show the live URL working end-to-end
+	•	Close with any trade-offs or things you would improve with more time
+
+Final submission checklist
+	•	GitHub repo is PUBLIC with full commit history (multiple commits)
+	•	README.md is complete with setup instructions and env vars table
+	•	.env.example committed (NOT .env)
+	•	Loom video is recorded and link is in the README
+	•	All 6 required API endpoints are working
+	•	Scraper auto-runs on server start and POST /api/scrape works
+	•	Frontend: login, register, stories list, bookmark toggle, bookmarks page
+	•	Live deployment URL added to README (bonus)
+
+48-Hour Time Plan
+
+Time
+Phase
+Goal
+Day 1 — Hours 0–2
+Phase 1: Setup
+Repo created, structure committed, dependencies installed
+Day 1 — Hours 2–8
+Phase 2: Backend
+All API endpoints working, auth tested with Postman/Insomnia
+Day 1 — Hours 8–11
+Phase 3: Scraper
+Scraper fetches 10 stories, saves to MongoDB, endpoint works
+Day 1 — Hours 11–12
+Buffer / testing
+Test full backend end-to-end, fix any bugs
+Day 2 — Hours 0–8
+Phase 4: Frontend
+React app with auth, stories, bookmarks fully functional
+Day 2 — Hours 8–10
+Phase 5a: Polish
+Code review, README written, .env.example committed
+Day 2 — Hours 10–11
+Phase 5b: Deploy
+Backend on Render, frontend on Vercel (bonus)
+Day 2 — Hours 11–12
+Phase 5c: Loom
+Record 5–10 min walkthrough and add link to README
+
+Pro Tips for a Strong Submission
+
+Git commit strategy
+	•	Commit after every working feature — at least 10–12 commits total
+	•	Use conventional commit messages: feat:, fix:, chore:, docs:
+	•	Never force-push to main — keep the full history visible
+	•	A good history shows your thought process, not just the final result
+
+Code quality signals that evaluators look for
+	•	Controllers are thin — logic is abstracted, not written inline in route handlers
+	•	async/await everywhere with proper try/catch — no unhandled promise rejections
+	•	Meaningful variable names — no x, temp, data as variable names
+	•	Consistent formatting — run Prettier before submitting
+	•	No console.log() left in production code — use proper error messages
+
+Common mistakes to avoid
+	•	Committing .env file — always add to .gitignore before the first commit
+	•	Returning password hash in API responses — always exclude with .select('-password')
+	•	Not handling CORS — install cors package and configure for your frontend URL
+	•	Forgetting to handle the case where a story URL is null (some HN posts have no URL)
+	•	Using synchronous bcrypt — always use bcrypt.hash() / bcrypt.compare() (async versions)
+
+Good luck with your assignment!
+Follow the phases in order, commit frequently, and let the Loom video tell your story.
