@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
 import useStories from '../hooks/useStories';
@@ -9,6 +9,14 @@ const Bookmarks = () => {
   const { user, updateBookmarks } = useAuth();
   const { stories, loading, error } = useStories(1, 100);
   const [selectedStory, setSelectedStory] = useState(null);
+  const previewRef = useRef(null);
+
+  // Reset scroll position when selected story changes
+  useEffect(() => {
+    if (previewRef.current) {
+      previewRef.current.scrollTop = 0;
+    }
+  }, [selectedStory]);
 
   const bookmarkedStories = stories.filter((story) =>
     user?.bookmarks?.includes(story._id)
@@ -76,7 +84,7 @@ const Bookmarks = () => {
           </div>
         )}
       </div>
-      <div className="p-6 lg:p-8 flex flex-col gap-6 flex-1 min-h-0">
+      <div className="p-6 lg:p-8 flex flex-col gap-6 shrink-0">
         <div>
           <h2 className="text-2xl font-bold leading-tight mb-3">{selectedStory.title}</h2>
           <div className="flex flex-wrap gap-4 text-sm text-muted mb-4">
@@ -88,11 +96,11 @@ const Bookmarks = () => {
 
         {/* Content Area */}
         {selectedStory.content ? (
-          <div className="flex-1 overflow-y-auto pr-3 text-gray-200 text-base leading-loose whitespace-pre-wrap font-sans border-t border-b border-border/50 py-4">
+          <div className="pr-3 text-gray-200 text-base leading-loose whitespace-pre-wrap font-sans border-t border-b border-border/50 py-4">
             {selectedStory.content}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto flex items-center justify-center text-muted italic border-t border-b border-border/50 py-4">
+          <div className="flex items-center justify-center text-muted italic border-t border-b border-border/50 py-4">
             Content preview not available.
           </div>
         )}
@@ -116,15 +124,15 @@ const Bookmarks = () => {
   ) : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6" id="bookmarks-page">
-      <header className="mb-6 sm:mb-8">
+    <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex flex-col" id="bookmarks-page">
+      <header className="shrink-0 py-4 mb-2 border-b border-border/30">
         <h1 className="text-2xl sm:text-3xl font-bold">Your Bookmarks</h1>
         <p className="text-muted text-sm mt-1">Stories you've saved for later</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
         {/* Left Pane: Stories List */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
+        <div className="lg:col-span-5 h-full overflow-y-auto pr-2 hide-scrollbar flex flex-col gap-4">
           {bookmarkedStories.map((story) => (
             <StoryCard
               key={story._id}
@@ -138,13 +146,16 @@ const Bookmarks = () => {
         </div>
 
         {/* Right Pane: Story Preview (Desktop) */}
-        <div className="lg:col-span-7 sticky top-24 hidden lg:block">
+        <div className="lg:col-span-7 h-full hidden lg:block overflow-hidden">
           {selectedStory ? (
-            <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col shadow-xl max-h-[calc(100vh-8rem)]">
+            <div 
+              ref={previewRef}
+              className="bg-surface border border-border rounded-2xl overflow-y-auto custom-scrollbar flex flex-col shadow-xl h-full"
+            >
               {previewContent}
             </div>
           ) : (
-            <div className="bg-surface border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center h-[500px] text-muted">
+            <div className="bg-surface border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center h-full text-muted">
               <span className="text-5xl mb-4">👈</span>
               <h3 className="text-xl font-semibold mb-2">Select a story</h3>
               <p>Click on a story from the list to see its preview here.</p>
