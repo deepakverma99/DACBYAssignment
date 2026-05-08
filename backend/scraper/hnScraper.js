@@ -72,7 +72,7 @@ const scrapeHackerNews = async () => {
     await Story.findOneAndUpdate(
       { url: story.url },
       { ...story, scrapedAt: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
     upsertCount++;
   }
