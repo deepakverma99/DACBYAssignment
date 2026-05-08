@@ -6,7 +6,7 @@ import { STORAGE_KEYS } from '../constants/storage';
  * All API calls must go through this — never hardcode the API URL elsewhere (SRP + DRY).
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },

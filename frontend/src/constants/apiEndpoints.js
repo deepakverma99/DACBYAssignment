@@ -4,13 +4,13 @@
  */
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
   },
   STORIES: {
-    LIST: '/api/stories',
-    SINGLE: (id) => `/api/stories/${id}`,
-    BOOKMARK: (id) => `/api/stories/${id}/bookmark`,
+    LIST: '/stories',
+    SINGLE: (id) => `/stories/${id}`,
+    BOOKMARK: (id) => `/stories/${id}/bookmark`,
   },
-  SCRAPE: '/api/scrape',
+  SCRAPE: '/scrape',
 };
